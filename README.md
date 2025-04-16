@@ -38,7 +38,7 @@ Bookly.
 
 5. Применение миграций:
    ```bash
-   cd bookly-backend
+   cd bookly
    python manage.py migrate
    ```
 
