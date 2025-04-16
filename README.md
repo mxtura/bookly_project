@@ -42,7 +42,7 @@ Bookly.
    python manage.py migrate
    ```
 
-6. Создание суперпользователя (опционально):
+6. Создание суперпользователя (админа):
    ```bash
    python manage.py createsuperuser
    ```
@@ -69,6 +69,12 @@ Bookly.
 python manage.py runserver
 ```
 Бэкенд будет доступен по адресу: http://127.0.0.1:8000/
+
+
+### Запуск скрипта для добавления книг:
+```bash
+python manage.py add_books
+```
 
 ### Запуск фронтенда
 ```bash
