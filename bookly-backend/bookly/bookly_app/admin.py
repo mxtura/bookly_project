@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Book, Genre, UserProfile, Bookshelf, Review, ExchangeOffer, ExchangeRequest, Discussion, Comment, SupportTicket, TicketReply
+from .models import Book, Genre, UserProfile, Bookshelf, Review, ExchangeOffer, ExchangeRequest, Discussion, Comment, SupportTicket, TicketReply, Author
 
 # Регистрация моделей в админке
 admin.site.register(Book)
@@ -13,3 +13,4 @@ admin.site.register(Discussion)
 admin.site.register(Comment)
 admin.site.register(SupportTicket)
 admin.site.register(TicketReply)
+admin.site.register(Author)

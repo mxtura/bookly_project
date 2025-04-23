@@ -1,20 +1,24 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
+from django.db.models import Avg, Count
+import logging
 from .models import (
-    Book, Genre, UserProfile, Bookshelf, Review, 
+    Author, Book, Genre, UserProfile, Bookshelf, Review, 
     ExchangeOffer, ExchangeRequest, Discussion, 
     Comment, SupportTicket, TicketReply
 )
 from .serializers import (
-    UserSerializer, UserProfileSerializer, BookSerializer, GenreSerializer, 
+    AuthorSerializer, UserSerializer, UserProfileSerializer, BookSerializer, GenreSerializer, 
     BookshelfSerializer, ReviewSerializer, ExchangeOfferSerializer, 
     ExchangeRequestSerializer, DiscussionSerializer, CommentSerializer,
-    SupportTicketSerializer, TicketReplySerializer
+    SupportTicketSerializer, TicketReplySerializer, BookshelfBooksUpdateSerializer
 )
+
+logger = logging.getLogger(__name__)
 
 class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -31,6 +35,23 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return obj.requester == request.user
         
         return False
+
+class AuthorViewSet(viewsets.ModelViewSet):
+    queryset = Author.objects.all()
+    serializer_class = AuthorSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
+    
+    def create(self, request, *args, **kwargs):
+        # Log the incoming data
+        logger.debug(f"Creating author with data: {request.data}")
+        
+        # Call the parent class create method
+        response = super().create(request, *args, **kwargs)
+        
+        # Log the created author
+        logger.debug(f"Created author: {response.data}")
+        return response
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -67,25 +88,123 @@ class GenreViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 class BookViewSet(viewsets.ModelViewSet):
-    queryset = Book.objects.all()
+    queryset = Book.objects.all().select_related('author').prefetch_related('genres')
     serializer_class = BookSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['author', 'genres__name']
-    search_fields = ['title', 'author', 'isbn', 'description']
-    ordering_fields = ['title', 'author', 'publication_date', 'created_at']
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['title', 'author__name', 'isbn']
+    
+    def create(self, request, *args, **kwargs):
+        # Log the incoming data
+        logger.debug(f"Creating book with data: {request.data}")
+        
+        # Check if author is provided
+        author_data = request.data.get('author')
+        if not author_data:
+            return Response(
+                {"author": ["This field is required."]}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Try to get the author by ID or create by name
+        try:
+            if isinstance(author_data, int):
+                author = Author.objects.get(id=author_data)
+            else:
+                author, created = Author.objects.get_or_create(name=author_data)
+                request.data['author'] = author.id
+                if created:
+                    logger.info(f"Created new author: {author.name}")
+        except Exception as e:
+            logger.error(f"Error processing author: {str(e)}")
+            return Response(
+                {"author": [f"Error processing author: {str(e)}"]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Call the parent create method
+        return super().create(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        # Log the incoming data
+        logger.debug(f"Updating book {kwargs.get('pk')} with data: {request.data}")
+        
+        # Check if author is being updated
+        author_data = request.data.get('author')
+        if author_data:
+            # Try to get the author by ID or create by name
+            try:
+                if isinstance(author_data, int):
+                    author = Author.objects.get(id=author_data)
+                else:
+                    author, created = Author.objects.get_or_create(name=author_data)
+                    request.data['author'] = author.id
+                    if created:
+                        logger.info(f"Created new author: {author.name}")
+            except Exception as e:
+                logger.error(f"Error processing author: {str(e)}")
+                return Response(
+                    {"author": [f"Error processing author: {str(e)}"]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Call the parent update method
+        return super().update(request, *args, **kwargs)
 
 class BookshelfViewSet(viewsets.ModelViewSet):
+    queryset = Bookshelf.objects.all()
     serializer_class = BookshelfSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return Bookshelf.objects.all()
-        return Bookshelf.objects.filter(user=self.request.user)
+        # Only return bookshelves owned by current user
+        return Bookshelf.objects.filter(user=self.request.user).prefetch_related('books', 'books__author')
     
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def get_serializer_class(self):
+        # Use BookshelfBooksUpdateSerializer for partial updates to handle book additions/removals
+        if self.action == 'partial_update' and 'books' in self.request.data:
+            return BookshelfBooksUpdateSerializer
+        return BookshelfSerializer
+    
+    @action(detail=True, methods=['patch'])
+    def update_books(self, request, pk=None):
+        """Endpoint specifically for updating books in a bookshelf"""
+        bookshelf = self.get_object()
+        
+        # Get the books IDs from the request
+        books_ids = request.data.get('books', [])
+        if not books_ids:
+            return Response({"books": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Log the books being added
+        logger.debug(f"Updating bookshelf {pk} books with: {books_ids}")
+        
+        # Update the books
+        try:
+            # Fetch the books and ensure they exist
+            books = []
+            for book_id in books_ids:
+                try:
+                    book = Book.objects.get(pk=book_id)
+                    books.append(book)
+                except Book.DoesNotExist:
+                    return Response(
+                        {"books": [f"Book with ID {book_id} does not exist."]},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Set the books on the bookshelf
+            bookshelf.books.set(books)
+            
+            # Return the updated bookshelf
+            serializer = self.get_serializer(bookshelf)
+            logger.debug(f"Updated bookshelf {pk} books successfully: {bookshelf.books.count()} books")
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error updating bookshelf books: {str(e)}")
+            return Response(
+                {"detail": f"Error updating books: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer

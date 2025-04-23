@@ -7,7 +7,7 @@ router.register(r'users', views.UserViewSet)
 router.register(r'profiles', views.UserProfileViewSet)
 router.register(r'books', views.BookViewSet)
 router.register(r'genres', views.GenreViewSet)
-router.register(r'bookshelves', views.BookshelfViewSet, basename='bookshelf')
+router.register(r'bookshelves', views.BookshelfViewSet)
 router.register(r'reviews', views.ReviewViewSet, basename='review')
 router.register(r'exchange-offers', views.ExchangeOfferViewSet, basename='exchange-offer')
 router.register(r'exchange-requests', views.ExchangeRequestViewSet, basename='exchange-request')
@@ -18,4 +18,5 @@ router.register(r'ticket-replies', views.TicketReplyViewSet, basename='ticket-re
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('api/', include(router.urls)),
 ]

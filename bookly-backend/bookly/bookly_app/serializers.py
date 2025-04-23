@@ -1,10 +1,102 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
-    Book, Genre, UserProfile, Bookshelf, Review, 
+    Book, Genre, Author, UserProfile, Bookshelf, Review, 
     ExchangeOffer, ExchangeRequest, Discussion, 
     Comment, SupportTicket, TicketReply
 )
+
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = ['id', 'name', 'bio', 'birth_date', 'death_date', 'photo']
+
+class GenreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ['id', 'name']
+
+class BookSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source='author.name', read_only=True)
+    genres = GenreSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Book
+        fields = ['id', 'title', 'author', 'author_name', 'description', 'isbn', 
+                  'cover_image', 'publication_date', 'genres', 'average_rating']
+    
+    def create(self, validated_data):
+        # Get the author data from validated_data
+        author_id = validated_data.get('author')
+        
+        # If author_id is a string (name), try to find or create the author
+        if isinstance(author_id, str):
+            try:
+                author, created = Author.objects.get_or_create(name=author_id)
+                validated_data['author'] = author
+            except Exception as e:
+                raise serializers.ValidationError(f"Error with author: {str(e)}")
+                
+        # Get genres data if present
+        genres_data = self.initial_data.get('genres', [])
+        
+        # Create the book instance
+        book = Book.objects.create(**validated_data)
+        
+        # Add genres if provided
+        if genres_data:
+            for genre_id in genres_data:
+                if isinstance(genre_id, int):
+                    try:
+                        genre = Genre.objects.get(id=genre_id)
+                        book.genres.add(genre)
+                    except Genre.DoesNotExist:
+                        pass
+        
+        return book
+    
+    def update(self, instance, validated_data):
+        # Update basic fields
+        instance.title = validated_data.get('title', instance.title)
+        instance.description = validated_data.get('description', instance.description)
+        instance.isbn = validated_data.get('isbn', instance.isbn)
+        instance.publication_date = validated_data.get('publication_date', instance.publication_date)
+        
+        # Update author if provided
+        author_id = validated_data.get('author')
+        if author_id:
+            try:
+                if isinstance(author_id, str):
+                    author, created = Author.objects.get_or_create(name=author_id)
+                    instance.author = author
+                elif isinstance(author_id, int):
+                    author = Author.objects.get(id=author_id)
+                    instance.author = author
+            except Author.DoesNotExist:
+                pass
+        
+        # Update genres if provided in the request data
+        genres_data = self.initial_data.get('genres')
+        if genres_data is not None:
+            instance.genres.clear()
+            for genre_id in genres_data:
+                if isinstance(genre_id, int):
+                    try:
+                        genre = Genre.objects.get(id=genre_id)
+                        instance.genres.add(genre)
+                    except Genre.DoesNotExist:
+                        pass
+        
+        instance.save()
+        return instance
+
+# Create a simplified BookSerializer for use in nested relationships
+class SimpleBookSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source='author.name', read_only=True)
+    
+    class Meta:
+        model = Book
+        fields = ['id', 'title', 'author_name', 'cover_image']
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -32,26 +124,42 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = ('id', 'username', 'email', 'full_name', 'birth_date', 'profile_picture')
 
-class GenreSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Genre
-        fields = ('id', 'name')
-
-class BookSerializer(serializers.ModelSerializer):
-    genres = GenreSerializer(many=True, read_only=True)
-    average_rating = serializers.ReadOnlyField()
-    
-    class Meta:
-        model = Book
-        fields = ('id', 'title', 'author', 'description', 'isbn', 'cover_image', 
-                  'publication_date', 'genres', 'created_at', 'average_rating')
-
 class BookshelfSerializer(serializers.ModelSerializer):
-    books = BookSerializer(many=True, read_only=True)
+    # Use the SimpleBookSerializer for listing books in a bookshelf to reduce payload size
+    books = SimpleBookSerializer(many=True, read_only=True)
     
     class Meta:
         model = Bookshelf
-        fields = ('id', 'name', 'user', 'books', 'created_at')
+        fields = ['id', 'name', 'user', 'books', 'created_at']
+        read_only_fields = ['user']
+    
+    def create(self, validated_data):
+        # Automatically set the user from the request
+        user = self.context['request'].user
+        bookshelf = Bookshelf.objects.create(user=user, **validated_data)
+        return bookshelf
+
+# This is critical for updating the books in a bookshelf
+class BookshelfBooksUpdateSerializer(serializers.ModelSerializer):
+    books = serializers.PrimaryKeyRelatedField(
+        queryset=Book.objects.all(), 
+        many=True, 
+        required=True
+    )
+    
+    class Meta:
+        model = Bookshelf
+        fields = ['books']
+    
+    def update(self, instance, validated_data):
+        # Replace the books in the bookshelf with the provided list
+        if 'books' in validated_data:
+            # Log for debugging
+            print(f"Updating books for bookshelf {instance.id}. Books: {validated_data['books']}")
+            instance.books.set(validated_data['books'])
+        
+        instance.save()
+        return instance
 
 class ReviewSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
@@ -79,13 +187,19 @@ class ExchangeRequestSerializer(serializers.ModelSerializer):
                   'message', 'status', 'created_at')
 
 class DiscussionSerializer(serializers.ModelSerializer):
-    creator_username = serializers.CharField(source='created_by.username', read_only=True)
+    book_id = serializers.IntegerField(source='book.id', read_only=True)
     book_title = serializers.CharField(source='book.title', read_only=True)
+    author_id = serializers.IntegerField(source='author.id', read_only=True)  # Добавляем
+    author_name = serializers.CharField(source='author.name', read_only=True) # Добавляем
+    creator_username = serializers.CharField(source='created_by.username', read_only=True)
     
     class Meta:
         model = Discussion
-        fields = ('id', 'title', 'created_by', 'creator_username', 'book', 'book_title', 
-                  'content', 'created_at')
+        fields = (
+            'id', 'title', 'created_by', 'creator_username',
+            'book_id', 'book_title', 'author_id', 'author_name',
+            'content', 'created_at'
+        )
 
 class CommentSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
