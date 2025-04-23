@@ -29,16 +29,19 @@ const Login = ({ setIsAuthenticated }) => {
         const userProfileResponse = await getUserProfile();
         const userData = userProfileResponse.data;
         
-        // Step 4: Store user role/permissions in localStorage for header to use
-        localStorage.setItem('userRole', userData.is_staff ? 'admin' : 'user');
+        // Step 4: Store user role/permissions in localStorage
+        const isAdmin = userData.is_staff === true;
+        localStorage.setItem('userRole', isAdmin ? 'admin' : 'user');
+        
+        // Store full user data for easy access
         localStorage.setItem('userData', JSON.stringify({
           username: userData.username,
           id: userData.id,
           email: userData.email,
-          is_staff: userData.is_staff
+          is_staff: userData.is_staff // This is important for admin check
         }));
         
-        console.log('User login successful, role:', userData.is_staff ? 'admin' : 'user');
+        console.log('User login successful, admin status:', isAdmin);
         
       } catch (profileError) {
         console.error('Error fetching user profile:', profileError);
@@ -48,10 +51,8 @@ const Login = ({ setIsAuthenticated }) => {
       // Step 5: Update authentication state and redirect
       setIsAuthenticated(true);
       
-      // Step 6: Dispatch a custom event to notify other components (like Header) about login
-      window.dispatchEvent(new CustomEvent('userLogin', {
-        detail: { isAuthenticated: true }
-      }));
+      // Step 6: Dispatch a custom event to notify Header about login
+      window.dispatchEvent(new CustomEvent('userLogin'));
       
       // Navigate to homepage
       navigate('/');

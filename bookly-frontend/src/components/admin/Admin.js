@@ -78,7 +78,8 @@ const Admin = () => {
           setUsers(usersResponse.data.results || usersResponse.data);
           break;
         case 1: // Books
-          const booksResponse = await getBooks();
+          // Pass an empty object instead of undefined when fetching books
+          const booksResponse = await getBooks({});
           setBooks(booksResponse.data.results || booksResponse.data);
           break;
         case 2: // Reviews

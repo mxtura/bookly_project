@@ -62,17 +62,14 @@ export const updateUserProfile = (profileData) => {
 };
 
 // Books
-export const getBooks = async (params) => {
+export const getBooks = async (params = {}) => { // Add default empty object for params
   try {
     console.log('API getBooks called with params:', params);
     
     // Clone params to avoid modifying the original
     const queryParams = { ...params };
     
-    // Make the API call
-    const response = await api.get('books/', { params: queryParams });
-    
-    // Additional debug info for genres
+    // Add defensive checks before accessing properties
     if (params.genre || params.genres || params.genre_name) {
       console.log(`Checking if API properly filtered by genre: ${params.genre || params.genres || params.genre_name}`);
       
@@ -88,6 +85,10 @@ export const getBooks = async (params) => {
       }
     }
     
+    // Make the API call with the properly formatted parameters
+    const response = await api.get('books/', { params: queryParams });
+    
+    // Log the response data
     console.log('API books response:', response.data);
     
     // Check if we need to sort the results client-side

@@ -15,19 +15,39 @@ import SupportIcon from '@mui/icons-material/Support';
 const Header = ({ isAuthenticated, setIsAuthenticated }) => {
   const [anchorElNav, setAnchorElNav] = useState(null);
   const [anchorElUser, setAnchorElUser] = useState(null);
-  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'guest');
+  const [userRole, setUserRole] = useState('guest');
   const navigate = useNavigate();
   
   useEffect(() => {
-    const handleUserLogin = () => {
-      setUserRole(localStorage.getItem('userRole') || 'user');
+    const checkUserRole = () => {
+      if (isAuthenticated) {
+        try {
+          const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+          console.log('User data from localStorage:', userData);
+          
+          if (userData && userData.is_staff === true) {
+            console.log('User is admin');
+            setUserRole('admin');
+          } else {
+            console.log('User is regular user');
+            setUserRole('user');
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+          setUserRole('user');
+        }
+      } else {
+        console.log('User is not authenticated');
+        setUserRole('guest');
+      }
     };
     
-    if (isAuthenticated) {
-      setUserRole(localStorage.getItem('userRole') || 'user');
-    } else {
-      setUserRole('guest');
-    }
+    checkUserRole();
+    
+    const handleUserLogin = () => {
+      console.log('User login event detected');
+      checkUserRole();
+    };
     
     window.addEventListener('userLogin', handleUserLogin);
     
@@ -61,6 +81,8 @@ const Header = ({ isAuthenticated, setIsAuthenticated }) => {
     setUserRole('guest');
     navigate('/login');
   };
+
+  console.log('Current user role:', userRole, 'Is admin?', userRole === 'admin');
 
   return (
     <AppBar position="static">
@@ -98,16 +120,31 @@ const Header = ({ isAuthenticated, setIsAuthenticated }) => {
             {isAuthenticated ? (
               <>
                 <Button component={RouterLink} to="/profile" color="inherit">Профиль</Button>
+                
                 {userRole === 'admin' && (
                   <Button
                     component={RouterLink}
                     to="/admin"
-                    sx={{ color: 'white' }}
+                    color="inherit"
+                    sx={{ 
+                      color: 'white',
+                      bgcolor: 'error.main',
+                      '&:hover': {
+                        bgcolor: 'error.dark',
+                      }
+                    }}
                     startIcon={<DashboardIcon />}
+                    onClick={() => {
+                      // Debug navigation
+                      console.log("Admin button clicked, navigating to /admin");
+                      // Force navigation if RouterLink doesn't work
+                      navigate('/admin');
+                    }}
                   >
                     Админ
                   </Button>
                 )}
+                
                 <Button component={RouterLink} to="/support" color="inherit">Поддержка</Button>
                 <Button color="inherit" onClick={handleLogout}>Выйти</Button>
               </>
