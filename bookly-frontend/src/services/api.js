@@ -62,37 +62,27 @@ export const updateUserProfile = (profileData) => {
 };
 
 // Books
-export const getBooks = async (params = {}) => { // Add default empty object for params
+export const getBooks = async (params = {}) => {
   try {
     console.log('API getBooks called with params:', params);
     
     // Clone params to avoid modifying the original
     const queryParams = { ...params };
     
-    // Add defensive checks before accessing properties
-    if (params.genre || params.genres || params.genre_name) {
-      console.log(`Checking if API properly filtered by genre: ${params.genre || params.genres || params.genre_name}`);
-      
-      if (response.data.results) {
-        const booksWithGenres = response.data.results.filter(book => 
-          book.genres && book.genres.length > 0
-        );
-        console.log(`Books with genre data: ${booksWithGenres.length}/${response.data.results.length}`);
-        
-        if (booksWithGenres.length > 0) {
-          console.log('Sample book genres:', booksWithGenres[0].genres);
-        }
-      }
-    }
-    
-    // Make the API call with the properly formatted parameters
+    // Make API call first before any processing
     const response = await api.get('books/', { params: queryParams });
     
-    // Log the response data
+    // Now that response is available, do post-processing
     console.log('API books response:', response.data);
     
-    // Check if we need to sort the results client-side
-    if (params.ordering && response.data.results) {
+    // Check genre filtering (moved after API call)
+    if (params.genre && response.data && response.data.results) {
+      console.log(`Checking if API properly filtered by genre: ${params.genre}`);
+      // Additional processing can happen here
+    }
+    
+    // Add client-side sorting
+    if (params.ordering && response.data && response.data.results) {
       console.log(`Performing client-side sorting by: ${params.ordering}`);
       
       // Determine sort field and direction
@@ -124,8 +114,6 @@ export const getBooks = async (params = {}) => { // Add default empty object for
           return sortDirection * (valueA > valueB ? 1 : valueA < valueB ? -1 : 0);
         }
       });
-      
-      console.log('Books after client-side sorting:', response.data.results);
     }
     
     return response;

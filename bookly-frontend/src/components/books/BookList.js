@@ -53,39 +53,47 @@ const BookList = () => {
           params.ordering = filters.sort;
         }
         
-        // Try several parameter formats for genre filtering
+        // Only use a single genre parameter (simpler and less error-prone)
         if (filters.genre) {
-          // Try several different parameter formats that the Django backend might expect
           params.genre = filters.genre;
-          params.genres = filters.genre;
-          params.genre_name = filters.genre;
         }
         
         console.log('Fetching books with params:', params);
-        const response = await getBooks(params);
         
-        let filteredBooks = response.data.results || response.data;
-        
-        // If we have a genre filter and the API didn't filter the results, do client-side filtering
-        if (filters.genre && filteredBooks.length === response.data.count) {
-          console.log('API did not filter by genre, applying client-side filter');
-          filteredBooks = filteredBooks.filter(book => {
-            // Check if book has genres array and if any genre matches our filter
-            return book.genres && book.genres.some(g => 
-              g.name === filters.genre || g === filters.genre
-            );
-          });
-        }
-        
-        console.log('Books after filtering:', filteredBooks);
-        setBooks(filteredBooks);
-        
-        // Handle pagination data
-        if (response.data.count !== undefined) {
-          setPagination(prevPagination => ({
-            ...prevPagination,
-            totalPages: Math.ceil(response.data.count / 10)
-          }));
+        try {
+          const response = await getBooks(params);
+          console.log('BookList received response:', response);
+          
+          // Extract books safely with fallbacks
+          const responseData = response?.data || {};
+          let filteredBooks = responseData.results || responseData || [];
+          
+          // Client-side genre filtering if needed
+          if (filters.genre && Array.isArray(filteredBooks) && filteredBooks.length > 0) {
+            // Only filter if API didn't filter already
+            filteredBooks = filteredBooks.filter(book => {
+              // Handle different formats of genre data
+              const bookGenres = book.genres || [];
+              return bookGenres.some(g => {
+                // Handle genre as object or string
+                return (g.name === filters.genre) || (g === filters.genre);
+              });
+            });
+          }
+          
+          console.log('Books after filtering:', filteredBooks);
+          setBooks(filteredBooks);
+          
+          // Handle pagination data
+          if (responseData.count !== undefined) {
+            setPagination(prevPagination => ({
+              ...prevPagination,
+              totalPages: Math.max(1, Math.ceil(responseData.count / 10))
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching books:', error);
+          setBooks([]);
         }
       } catch (error) {
         console.error('Error fetching books:', error);
