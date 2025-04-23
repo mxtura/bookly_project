@@ -31,7 +31,7 @@ const ExchangeOffers = () => {
       console.error('Error fetching offers:', error);
       setNotification({
         open: true,
-        message: 'Failed to load exchange offers',
+        message: 'Не удалось загрузить предложения обмена',
         severity: 'error'
       });
     } finally {
@@ -46,14 +46,14 @@ const ExchangeOffers = () => {
       setDeleteDialog(false);
       setNotification({
         open: true,
-        message: 'Offer deleted successfully',
+        message: 'Предложение успешно удалено',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error deleting offer:', error);
       setNotification({
         open: true,
-        message: 'Failed to delete offer',
+        message: 'Не удалось удалить предложение',
         severity: 'error'
       });
     }
@@ -71,7 +71,7 @@ const ExchangeOffers = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          My Exchange Offers
+          Мои предложения обмена
         </Typography>
         
         <Button 
@@ -80,24 +80,24 @@ const ExchangeOffers = () => {
           variant="contained" 
           color="primary"
         >
-          View Exchange Requests
+          Просмотр запросов на обмен
         </Button>
       </Box>
       
       {offers.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" gutterBottom>
-            You don't have any exchange offers yet
+            У вас еще нет предложений обмена
           </Typography>
           <Typography variant="body1" paragraph>
-            Visit a book page to create an exchange or selling offer.
+            Посетите страницу книги, чтобы создать предложение обмена или продажи.
           </Typography>
           <Button 
             component={Link}
             to="/books"
             variant="contained"
           >
-            Browse Books
+            Просмотр книг
           </Button>
         </Paper>
       ) : (
@@ -118,7 +118,7 @@ const ExchangeOffers = () => {
                   
                   <Box sx={{ mb: 2 }}>
                     <Chip 
-                      label={offer.exchange_type === 'SELL' ? 'For Sale' : 'For Exchange'} 
+                      label={offer.exchange_type === 'SELL' ? 'Продается' : 'Для обмена'} 
                       color={offer.exchange_type === 'SELL' ? 'secondary' : 'primary'}
                       size="small"
                       sx={{ mr: 1 }}
@@ -135,23 +135,23 @@ const ExchangeOffers = () => {
                   </Box>
                   
                   <Typography variant="body2" color="text.secondary" paragraph>
-                    <strong>Condition:</strong> {offer.condition}
+                    <strong>Состояние:</strong> {offer.condition}
                   </Typography>
                   
                   {offer.exchange_type === 'SELL' && offer.price && (
                     <Typography variant="body2" color="text.secondary" paragraph>
-                      <strong>Price:</strong> ${offer.price}
+                      <strong>Цена:</strong> ${offer.price}
                     </Typography>
                   )}
                   
                   {offer.exchange_preferences && (
                     <Typography variant="body2" color="text.secondary" paragraph>
-                      <strong>Exchange Preferences:</strong> {offer.exchange_preferences}
+                      <strong>Предпочтения обмена:</strong> {offer.exchange_preferences}
                     </Typography>
                   )}
                   
                   <Typography variant="body2" color="text.secondary">
-                    <strong>Created:</strong> {new Date(offer.created_at).toLocaleDateString()}
+                    <strong>Создано:</strong> {new Date(offer.created_at).toLocaleDateString()}
                   </Typography>
                 </CardContent>
                 <CardActions>
@@ -160,7 +160,7 @@ const ExchangeOffers = () => {
                     component={Link} 
                     to={`/books/${offer.book}`}
                   >
-                    View Book
+                    Посмотреть книгу
                   </Button>
                   <Button 
                     size="small" 
@@ -170,7 +170,7 @@ const ExchangeOffers = () => {
                       setDeleteDialog(true);
                     }}
                   >
-                    Delete Offer
+                    Удалить предложение
                   </Button>
                 </CardActions>
               </Card>
@@ -181,15 +181,15 @@ const ExchangeOffers = () => {
       
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
-        <DialogTitle>Delete Exchange Offer</DialogTitle>
+        <DialogTitle>Удалить предложение обмена</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete your exchange offer for "{selectedOffer?.book_title}"?
+            Вы уверены, что хотите удалить свое предложение обмена для "{selectedOffer?.book_title}"?
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={handleDeleteOffer} color="error">Delete</Button>
+          <Button onClick={() => setDeleteDialog(false)}>Отмена</Button>
+          <Button onClick={handleDeleteOffer} color="error">Удалить</Button>
         </DialogActions>
       </Dialog>
       

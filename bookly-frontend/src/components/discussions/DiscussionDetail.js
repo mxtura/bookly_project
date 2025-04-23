@@ -12,6 +12,13 @@ import {
   getDiscussions, getComments, createComment, likeComment, unlikeComment
 } from '../../services/api';
 
+// Вспомогательная функция для безопасного отображения книг
+export const formatBookForDisplay = (book) => {
+  if (!book) return "Выберите книгу";
+  if (typeof book === 'string') return book;
+  return book.title || "Книга без названия";
+};
+
 const DiscussionDetail = () => {
   const { id } = useParams();
   const [discussion, setDiscussion] = useState(null);
@@ -46,7 +53,7 @@ const DiscussionDetail = () => {
         console.error('Error fetching discussion data:', error);
         setNotification({
           open: true,
-          message: 'Failed to load discussion data',
+          message: 'Не удалось загрузить данные обсуждения',
           severity: 'error'
         });
       } finally {
@@ -79,14 +86,14 @@ const DiscussionDetail = () => {
       
       setNotification({
         open: true,
-        message: 'Comment added successfully',
+        message: 'Комментарий успешно добавлен',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error adding comment:', error);
       setNotification({
         open: true,
-        message: 'Failed to add comment',
+        message: 'Не удалось добавить комментарий',
         severity: 'error'
       });
     }
@@ -122,7 +129,7 @@ const DiscussionDetail = () => {
     return (
       <Container>
         <Typography variant="h5" align="center" sx={{ my: 4 }}>
-          Discussion not found
+          Обсуждение не найдено
         </Typography>
         <Button 
           component={Link} 
@@ -130,7 +137,7 @@ const DiscussionDetail = () => {
           startIcon={<ArrowBackIcon />}
           sx={{ display: 'block', mx: 'auto' }}
         >
-          Back to Discussions
+          Назад к обсуждениям
         </Button>
       </Container>
     );
@@ -144,7 +151,7 @@ const DiscussionDetail = () => {
         startIcon={<ArrowBackIcon />}
         sx={{ mb: 3 }}
       >
-        Back to Discussions
+        Назад к обсуждениям
       </Button>
       
       <Paper sx={{ p: 3, mb: 4 }}>
@@ -159,7 +166,7 @@ const DiscussionDetail = () => {
               {discussion.creator_username}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Posted on {new Date(discussion.created_at).toLocaleDateString()}
+              Опубликовано {new Date(discussion.created_at).toLocaleDateString()}
             </Typography>
           </Box>
           
@@ -171,7 +178,7 @@ const DiscussionDetail = () => {
               size="small"
               sx={{ ml: 'auto' }}
             >
-              View Book: {discussion.book_title}
+              Смотреть книгу: {discussion.book_title}
             </Button>
           )}
         </Box>
@@ -184,18 +191,18 @@ const DiscussionDetail = () => {
       </Paper>
       
       <Typography variant="h5" gutterBottom>
-        Comments ({comments.length})
+        Комментарии ({comments.length})
       </Typography>
       
       {isAuthenticated && (
         <Paper sx={{ p: 3, mb: 4 }}>
           <Typography variant="h6" gutterBottom>
-            Add a Comment
+            Добавить комментарий
           </Typography>
           
           <Box component="form" onSubmit={handleCommentSubmit}>
             <TextField
-              label="Your Comment"
+              label="Ваш комментарий"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               fullWidth
@@ -212,7 +219,7 @@ const DiscussionDetail = () => {
               sx={{ mt: 1 }}
               disabled={!commentText.trim()}
             >
-              Post Comment
+              Отправить комментарий
             </Button>
           </Box>
         </Paper>
@@ -221,7 +228,7 @@ const DiscussionDetail = () => {
       {comments.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="body1">
-            No comments yet. Be the first to comment!
+            Комментариев пока нет. Будьте первым!
           </Typography>
         </Paper>
       ) : (

@@ -3,17 +3,21 @@ import { Link } from 'react-router-dom';
 import {
   Container, Typography, Grid, Paper, Box, Button, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Card, CardContent, CardMedia, CardActionArea, CircularProgress,
-  Tabs, Tab, Snackbar, Alert, IconButton
+  CardMedia, CardContent, CircularProgress,
+  Tabs, Tab, Snackbar, Alert, IconButton, Card
 } from '@mui/material';
-// Removed unused imports: List, ListItem, ListItemText, ListItemSecondaryAction
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
 import {
   getUserBookshelves, createBookshelf, updateBookshelf, deleteBookshelf,
   getBooks
 } from '../../services/api';
+import BookCard from '../books/BookCard'; // Import the new BookCard component
+
+// Define a constant for the fixed card width that will be used throughout the component
+const BOOK_CARD_WIDTH = 180; // This should match the width from BookCard component
 
 const Bookshelves = () => {
   const [bookshelves, setBookshelves] = useState([]);
@@ -43,14 +47,16 @@ const Bookshelves = () => {
       
       if (response.data.results && response.data.results.length > 0) {
         setSelectedShelf(response.data.results[0]);
+        console.log("Initial bookshelf name:", response.data.results[0].books);
       } else if (response.data && response.data.length > 0) {
         setSelectedShelf(response.data[0]);
+        console.log("Initial bookshelf books:", response.data[0].books);
       }
     } catch (error) {
       console.error('Error fetching bookshelves:', error);
       setNotification({
         open: true,
-        message: 'Failed to load bookshelves',
+        message: 'Не удал ось загрузить книжные полки',
         severity: 'error'
       });
     } finally {
@@ -66,14 +72,14 @@ const Bookshelves = () => {
       fetchBookshelves();
       setNotification({
         open: true,
-        message: 'Bookshelf created successfully',
+        message: 'Книжная полка успешно создана',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error creating bookshelf:', error);
       setNotification({
         open: true,
-        message: 'Failed to create bookshelf',
+        message: 'Не удалось создать книжную полку',
         severity: 'error'
       });
     }
@@ -88,14 +94,14 @@ const Bookshelves = () => {
       fetchBookshelves();
       setNotification({
         open: true,
-        message: 'Bookshelf updated successfully',
+        message: 'Книжная полка успешно обновлена',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error updating bookshelf:', error);
       setNotification({
         open: true,
-        message: 'Failed to update bookshelf',
+        message: 'Не удалось обновить книжную полку',
         severity: 'error'
       });
     }
@@ -107,14 +113,14 @@ const Bookshelves = () => {
       fetchBookshelves();
       setNotification({
         open: true,
-        message: 'Bookshelf deleted successfully',
+        message: 'Книжная полка успешно удалена',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error deleting bookshelf:', error);
       setNotification({
         open: true,
-        message: 'Failed to delete bookshelf',
+        message: 'Не удалось удалить книжную полку',
         severity: 'error'
       });
     }
@@ -149,26 +155,73 @@ const Bookshelves = () => {
 
   const handleAddBookToShelf = async (bookId) => {
     try {
+      if (!selectedShelf) {
+        throw new Error("No bookshelf selected");
+      }
+      
+      console.log("Adding book", bookId, "to shelf", selectedShelf.id);
+      
       // Get current books in the shelf
-      const updatedBooks = [...selectedShelf.books.map(book => book.id), bookId];
+      const currentBooks = selectedShelf.books.map(book => book.id);
+      const updatedBooks = [...currentBooks, bookId];
+      console.log("Updated books array:", updatedBooks);
       
       // Update the shelf with the new book
-      await updateBookshelf(selectedShelf.id, { books: updatedBooks });
+      const updateData = { books: updatedBooks };
+      console.log("Sending update data:", updateData);
       
-      // Refresh bookshelves
-      fetchBookshelves();
+      const response = await updateBookshelf(selectedShelf.id, updateData);
+      console.log("Update response:", response);
       
+      // Close the dialog immediately to show that action was taken
+      setAddBookDialog(false);
+      
+      // Show a temporary notification
+      setNotification({
+        open: true,
+        message: 'Добавление книги...',
+        severity: 'info'
+      });
+      
+      // Wait a bit for the backend to process the update
+      setTimeout(async () => {
+        // Refresh bookshelves
+        await fetchBookshelves();
+        
+        // Re-select the current shelf to update its books
+        const refreshedBookshelves = await getUserBookshelves();
+        const refreshedShelf = refreshedBookshelves.data.results?.find(shelf => shelf.id === selectedShelf.id) || 
+                              refreshedBookshelves.data?.find(shelf => shelf.id === selectedShelf.id);
+        
+        if (refreshedShelf) {
+          setSelectedShelf(refreshedShelf);
+          console.log(`Updated bookshelf "${refreshedShelf.name}" books:`, refreshedShelf.books);
+        }
+        
+        // Show final notification
+        setNotification({
+          open: true,
+          message: 'Книга успешно добавлена на полку',
+          severity: 'success'
+        });
+        
+        // If everything else fails, reload the page after 2 seconds
+        if (!refreshedShelf?.books.some(book => book.id === bookId)) {
+          setNotification({
+            open: true,
+            message: 'Перезагрузка страницы для отображения изменений...',
+            severity: 'info'
+          });
+          setTimeout(() => window.location.reload(), 2000);
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error adding book to shelf:', error);
       setAddBookDialog(false);
       setNotification({
         open: true,
-        message: 'Book added to shelf successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      console.error('Error adding book to shelf:', error);
-      setNotification({
-        open: true,
-        message: 'Failed to add book to shelf',
+        message: `Не удалось добавить книгу на полку: ${error.message}`,
         severity: 'error'
       });
     }
@@ -185,25 +238,32 @@ const Bookshelves = () => {
       await updateBookshelf(selectedShelf.id, { books: updatedBooks });
       
       // Refresh bookshelves
-      fetchBookshelves();
+      await fetchBookshelves();
+      
+      // Log the updated books after removal
+      const updatedShelf = (await getUserBookshelves()).data.results?.find(shelf => shelf.id === selectedShelf.id) ||
+                          (await getUserBookshelves()).data?.find(shelf => shelf.id === selectedShelf.id);
+      console.log(`Books after removal from "${selectedShelf.name}":`, updatedShelf?.books || []);
       
       setNotification({
         open: true,
-        message: 'Book removed from shelf successfully',
+        message: 'Книга успешно удалена с полки',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error removing book from shelf:', error);
       setNotification({
         open: true,
-        message: 'Failed to remove book from shelf',
+        message: 'Не удалось удалить книгу с полки',
         severity: 'error'
       });
     }
   };
 
   const handleTabChange = (event, newValue) => {
-    setSelectedShelf(bookshelves[newValue]);
+    const selectedShelf = bookshelves[newValue];
+    setSelectedShelf(selectedShelf);
+    console.log(`Selected bookshelf "${selectedShelf.name}" books:`, selectedShelf.books);
   };
 
   if (loading) {
@@ -218,7 +278,7 @@ const Bookshelves = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          My Bookshelves
+          Мои книжные полки
         </Typography>
         
         <Button 
@@ -230,17 +290,17 @@ const Bookshelves = () => {
             setDialogOpen(true);
           }}
         >
-          Create Shelf
+          Создать полку
         </Button>
       </Box>
       
       {bookshelves.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" gutterBottom>
-            You don't have any bookshelves yet
+            У вас еще нет книжных полок
           </Typography>
           <Typography variant="body1" paragraph>
-            Create your first bookshelf to start organizing your books.
+            Создайте свою первую книжную полку, чтобы начать организовывать книги.
           </Typography>
           <Button 
             variant="contained" 
@@ -251,7 +311,7 @@ const Bookshelves = () => {
               setDialogOpen(true);
             }}
           >
-            Create Your First Shelf
+            Создать первую полку
           </Button>
         </Paper>
       ) : (
@@ -307,7 +367,7 @@ const Bookshelves = () => {
                 onClick={handleAddBookClick}
                 sx={{ ml: 2 }}
               >
-                Add Book
+                Добавить книгу
               </Button>
             </Box>
           </Box>
@@ -315,49 +375,36 @@ const Bookshelves = () => {
           {selectedShelf && selectedShelf.books.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="h6" gutterBottom>
-                This shelf is empty
+                Эта полка пуста
               </Typography>
               <Typography variant="body1" paragraph>
-                Add books to this shelf to start building your collection.
+                Добавьте книги на эту полку, чтобы начать создавать коллекцию.
               </Typography>
               <Button 
                 variant="contained" 
                 startIcon={<AddIcon />}
                 onClick={handleAddBookClick}
               >
-                Add Books
+                Добавить книги
               </Button>
             </Paper>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={3} sx={{ justifyContent: 'flex-start' }}>
               {selectedShelf?.books.map((book) => (
-                <Grid item key={book.id} xs={12} sm={6} md={4} lg={3}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                    <CardActionArea component={Link} to={`/books/${book.id}`}>
-                      <CardMedia
-                        component="img"
-                        height="200"
-                        image={book.cover_image || 'https://via.placeholder.com/150x200?text=No+Cover'}
-                        alt={book.title}
-                      />
-                      <CardContent>
-                        <Typography gutterBottom variant="h6" component="div" noWrap>
-                          {book.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          by {book.author}
-                        </Typography>
-                      </CardContent>
-                    </CardActionArea>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      sx={{ position: 'absolute', top: 5, right: 5, bgcolor: 'rgba(255, 255, 255, 0.7)' }}
-                      onClick={() => handleRemoveBookFromShelf(book.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Card>
+                <Grid 
+                  item 
+                  key={book.id} 
+                  xs={12} sm={6} md={4} lg={3}
+                  sx={{ 
+                    display: 'flex',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <BookCard 
+                    book={book}
+                    onRemove={handleRemoveBookFromShelf}
+                    actionIcon={<DeleteIcon />}
+                  />
                 </Grid>
               ))}
             </Grid>
@@ -367,12 +414,12 @@ const Bookshelves = () => {
       
       {/* Create/Edit Shelf Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-        <DialogTitle>{editMode ? 'Edit Bookshelf' : 'Create New Bookshelf'}</DialogTitle>
+        <DialogTitle>{editMode ? 'Редактировать книжную полку' : 'Создать новую книжную полку'}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
-            label="Shelf Name"
+            label="Название полки"
             type="text"
             fullWidth
             value={shelfForm.name}
@@ -380,21 +427,21 @@ const Bookshelves = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDialogOpen(false)}>Отмена</Button>
           <Button onClick={editMode ? handleUpdateShelf : handleCreateShelf} color="primary">
-            {editMode ? 'Update' : 'Create'}
+            {editMode ? 'Обновить' : 'Создать'}
           </Button>
         </DialogActions>
       </Dialog>
       
       {/* Add Book Dialog */}
       <Dialog open={addBookDialog} onClose={() => setAddBookDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add Book to {selectedShelf?.name}</DialogTitle>
+        <DialogTitle>Добавить книгу на {selectedShelf?.name}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
-            label="Search Books"
+            label="Поиск книг"
             type="text"
             fullWidth
             value={searchQuery}
@@ -402,46 +449,68 @@ const Bookshelves = () => {
             sx={{ mb: 2 }}
           />
           
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{ justifyContent: 'center' }}>
             {availableBooks.length === 0 ? (
               <Grid item xs={12}>
                 <Typography variant="body1" align="center">
-                  No books found. Try a different search term.
+                  Книги не найдены. Попробуйте другой поисковый запрос.
                 </Typography>
               </Grid>
             ) : (
               availableBooks.map(book => (
-                <Grid item xs={12} sm={6} md={4} key={book.id}>
-                  <Card>
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={book.cover_image || 'https://via.placeholder.com/150x200?text=No+Cover'}
-                      alt={book.title}
+                <Grid 
+                  item 
+                  key={book.id} 
+                  xs={12} sm={6} md={4}
+                  sx={{ 
+                    display: 'flex',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Box sx={{ position: 'relative', width: BOOK_CARD_WIDTH, maxWidth: '100%' }}>
+                    <BookCard 
+                      book={book}
+                      cardProps={{ 
+                        sx: { 
+                          mb: 0,
+                          height: '100%',
+                          width: '100%'
+                        } 
+                      }}
+                      mediaProps={{
+                        height: 140
+                      }}
                     />
-                    <CardContent>
-                      <Typography variant="subtitle1" noWrap>{book.title}</Typography>
-                      <Typography variant="body2" color="text.secondary" noWrap>
-                        by {book.author}
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        sx={{ mt: 1 }}
-                        onClick={() => handleAddBookToShelf(book.id)}
-                        disabled={selectedShelf?.books.some(b => b.id === book.id)}
-                      >
-                        {selectedShelf?.books.some(b => b.id === book.id) ? 'Already Added' : 'Add to Shelf'}
-                      </Button>
-                    </CardContent>
-                  </Card>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      sx={{ 
+                        position: 'absolute', 
+                        top: 5, 
+                        right: 5, 
+                        bgcolor: 'rgba(255, 255, 255, 0.8)',
+                        '&:hover': {
+                          bgcolor: 'rgba(255, 255, 255, 0.95)',
+                        },
+                        '&.Mui-disabled': {
+                          bgcolor: 'rgba(240, 240, 240, 0.8)',
+                        }
+                      }}
+                      onClick={() => handleAddBookToShelf(book.id)}
+                      disabled={selectedShelf?.books.some(b => b.id === book.id)}
+                    >
+                      {selectedShelf?.books.some(b => b.id === book.id) 
+                        ? <CheckIcon fontSize="small" /> 
+                        : <AddIcon fontSize="small" />}
+                    </IconButton>
+                  </Box>
                 </Grid>
               ))
             )}
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddBookDialog(false)}>Close</Button>
+          <Button onClick={() => setAddBookDialog(false)}>Закрыть</Button>
         </DialogActions>
       </Dialog>
       

@@ -1,14 +1,64 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, Container } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import {
+  AppBar, Box, Toolbar, Typography, Button, IconButton, Container,
+  Menu, MenuItem, Avatar, Divider, ListItemIcon
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LogoutIcon from '@mui/icons-material/Logout';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import BookIcon from '@mui/icons-material/Book';
+import CollectionsBookmarkIcon from '@mui/icons-material/CollectionsBookmark';
+import SupportIcon from '@mui/icons-material/Support';
 
-const Header = ({ isAuthenticated, setIsAuthenticated, isAdmin }) => {
+const Header = ({ isAuthenticated, setIsAuthenticated }) => {
+  const [anchorElNav, setAnchorElNav] = useState(null);
+  const [anchorElUser, setAnchorElUser] = useState(null);
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'guest');
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    const handleUserLogin = () => {
+      setUserRole(localStorage.getItem('userRole') || 'user');
+    };
+    
+    if (isAuthenticated) {
+      setUserRole(localStorage.getItem('userRole') || 'user');
+    } else {
+      setUserRole('guest');
+    }
+    
+    window.addEventListener('userLogin', handleUserLogin);
+    
+    return () => {
+      window.removeEventListener('userLogin', handleUserLogin);
+    };
+  }, [isAuthenticated]);
+
+  const handleOpenNavMenu = (event) => {
+    setAnchorElNav(event.currentTarget);
+  };
+  
+  const handleOpenUserMenu = (event) => {
+    setAnchorElUser(event.currentTarget);
+  };
+
+  const handleCloseNavMenu = () => {
+    setAnchorElNav(null);
+  };
+
+  const handleCloseUserMenu = () => {
+    setAnchorElUser(null);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userData');
     setIsAuthenticated(false);
+    setUserRole('guest');
     navigate('/login');
   };
 
@@ -18,7 +68,7 @@ const Header = ({ isAuthenticated, setIsAuthenticated, isAdmin }) => {
         <Toolbar disableGutters>
           <Typography
             variant="h6"
-            component={Link}
+            component={RouterLink}
             to="/"
             sx={{
               mr: 2,
@@ -33,13 +83,13 @@ const Header = ({ isAuthenticated, setIsAuthenticated, isAdmin }) => {
           </Typography>
 
           <Box sx={{ flexGrow: 1, display: { xs: 'flex' } }}>
-            <Button component={Link} to="/books" color="inherit">Книги</Button>
-            <Button component={Link} to="/discussions" color="inherit">Обсуждения</Button>
+            <Button component={RouterLink} to="/books" color="inherit">Книги</Button>
+            <Button component={RouterLink} to="/discussions" color="inherit">Обсуждения</Button>
             
             {isAuthenticated && (
               <>
-                <Button component={Link} to="/bookshelves" color="inherit">Мои полки</Button>
-                <Button component={Link} to="/exchange/offers" color="inherit">Обмен</Button>
+                <Button component={RouterLink} to="/bookshelves" color="inherit">Мои полки</Button>
+                <Button component={RouterLink} to="/exchange/offers" color="inherit">Обмен</Button>
               </>
             )}
           </Box>
@@ -47,17 +97,24 @@ const Header = ({ isAuthenticated, setIsAuthenticated, isAdmin }) => {
           <Box sx={{ display: { xs: 'flex' } }}>
             {isAuthenticated ? (
               <>
-                <Button component={Link} to="/profile" color="inherit">Профиль</Button>
-                {isAdmin && (
-                  <Button component={Link} to="/admin" color="inherit">Админ</Button>
+                <Button component={RouterLink} to="/profile" color="inherit">Профиль</Button>
+                {userRole === 'admin' && (
+                  <Button
+                    component={RouterLink}
+                    to="/admin"
+                    sx={{ color: 'white' }}
+                    startIcon={<DashboardIcon />}
+                  >
+                    Админ
+                  </Button>
                 )}
-                <Button component={Link} to="/support" color="inherit">Поддержка</Button>
+                <Button component={RouterLink} to="/support" color="inherit">Поддержка</Button>
                 <Button color="inherit" onClick={handleLogout}>Выйти</Button>
               </>
             ) : (
               <>
-                <Button component={Link} to="/login" color="inherit">Войти</Button>
-                <Button component={Link} to="/register" color="inherit">Регистрация</Button>
+                <Button component={RouterLink} to="/login" color="inherit">Войти</Button>
+                <Button component={RouterLink} to="/register" color="inherit">Регистрация</Button>
               </>
             )}
           </Box>

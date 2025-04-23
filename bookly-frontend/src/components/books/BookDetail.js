@@ -40,6 +40,7 @@ const BookDetail = () => {
       setLoading(true);
       try {
         const bookResponse = await getBook(id);
+        console.log("Book data:", bookResponse.data); // Debug to see what's coming from API
         setBook(bookResponse.data);
         
         const reviewsResponse = await getBookReviews(id);
@@ -161,7 +162,7 @@ const BookDetail = () => {
     return (
       <Container>
         <Typography variant="h5" align="center" sx={{ my: 4 }}>
-          Book not found
+          Книга не найдена
         </Typography>
       </Container>
     );
@@ -173,7 +174,7 @@ const BookDetail = () => {
         <Grid item xs={12} md={4}>
           <Box sx={{ position: 'sticky', top: 20 }}>
             <img
-              src={book.cover_image || 'https://via.placeholder.com/300x450?text=No+Cover'}
+              src={book.cover_image || 'https://via.placeholder.com/300x450?text=Нет+обложки'}
               alt={book.title}
               style={{ width: '100%', maxHeight: '450px', objectFit: 'contain' }}
             />
@@ -186,7 +187,7 @@ const BookDetail = () => {
                   fullWidth
                   onClick={() => setOfferDialog(true)}
                 >
-                  Offer for Exchange/Sale
+                  Предложить обмен/продажу
                 </Button>
               </Box>
             )}
@@ -199,7 +200,12 @@ const BookDetail = () => {
           </Typography>
           
           <Typography variant="h6" gutterBottom>
-            by {book.author}
+            автор: {
+              book.author_name || // Try author_name first (from serializer's read-only field)
+              (book.author && typeof book.author === 'object' ? book.author.name : // Then try object format
+              (typeof book.author === 'string' ? book.author : // Then try string format
+              "Неизвестный автор")) // Fallback
+            }
           </Typography>
           
           {book.average_rating > 0 && (
@@ -218,32 +224,32 @@ const BookDetail = () => {
           </Box>
           
           <Typography variant="body1" paragraph>
-            <strong>ISBN:</strong> {book.isbn || 'Not available'}
+            <strong>ISBN:</strong> {book.isbn || 'Недоступно'}
           </Typography>
           
           {book.publication_date && (
             <Typography variant="body1" paragraph>
-              <strong>Publication Date:</strong> {new Date(book.publication_date).toLocaleDateString()}
+              <strong>Дата публикации:</strong> {new Date(book.publication_date).toLocaleDateString()}
             </Typography>
           )}
           
           <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-            Description
+            Описание
           </Typography>
           
           <Typography variant="body1" paragraph>
-            {book.description || 'No description available.'}
+            {book.description || 'Описание отсутствует.'}
           </Typography>
           
           <Divider sx={{ my: 4 }} />
           
           <Typography variant="h5" gutterBottom>
-            Exchange Offers
+            Предложения обмена
           </Typography>
           
           {offers.length === 0 ? (
             <Typography variant="body1">
-              No exchange offers available for this book.
+              Нет доступных предложений обмена для этой книги.
             </Typography>
           ) : (
             <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -251,22 +257,22 @@ const BookDetail = () => {
                 <Grid item xs={12} key={offer.id}>
                   <Paper sx={{ p: 2 }}>
                     <Typography variant="subtitle1">
-                      <strong>{offer.owner_username}</strong> is offering this book for {offer.exchange_type === 'SELL' ? 'sale' : 'exchange'}
+                      <strong>{offer.owner_username}</strong> предлагает эту книгу для {offer.exchange_type === 'SELL' ? 'продажи' : 'обмена'}
                     </Typography>
                     
                     <Typography variant="body2">
-                      <strong>Condition:</strong> {offer.condition}
+                      <strong>Состояние:</strong> {offer.condition}
                     </Typography>
                     
                     {offer.exchange_type === 'SELL' && offer.price && (
                       <Typography variant="body2">
-                        <strong>Price:</strong> ${offer.price}
+                        <strong>Цена:</strong> ${offer.price}
                       </Typography>
                     )}
                     
                     {offer.exchange_preferences && (
                       <Typography variant="body2">
-                        <strong>Exchange Preferences:</strong> {offer.exchange_preferences}
+                        <strong>Предпочтения по обмену:</strong> {offer.exchange_preferences}
                       </Typography>
                     )}
                     
@@ -280,7 +286,7 @@ const BookDetail = () => {
                           setRequestDialog(true);
                         }}
                       >
-                        Request Exchange
+                        Запросить обмен
                       </Button>
                     )}
                   </Paper>
@@ -292,19 +298,19 @@ const BookDetail = () => {
           <Divider sx={{ my: 4 }} />
           
           <Typography variant="h5" gutterBottom>
-            Reviews
+            Отзывы
           </Typography>
           
           {isAuthenticated && (
             <Paper sx={{ p: 3, mb: 4 }}>
               <Typography variant="h6" gutterBottom>
-                Write a Review
+                Написать отзыв
               </Typography>
               
               <form onSubmit={handleReviewSubmit}>
                 <TextField
                   name="title"
-                  label="Review Title"
+                  label="Заголовок отзыва"
                   value={reviewForm.title}
                   onChange={handleReviewChange}
                   fullWidth
@@ -313,7 +319,7 @@ const BookDetail = () => {
                 />
                 
                 <Box sx={{ mt: 2, mb: 1 }}>
-                  <Typography component="legend">Rating</Typography>
+                  <Typography component="legend">Рейтинг</Typography>
                   <Rating
                     name="rating"
                     value={reviewForm.rating}
@@ -325,7 +331,7 @@ const BookDetail = () => {
                 
                 <TextField
                   name="content"
-                  label="Review"
+                  label="Отзыв"
                   value={reviewForm.content}
                   onChange={handleReviewChange}
                   fullWidth
@@ -336,7 +342,7 @@ const BookDetail = () => {
                 />
                 
                 <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
-                  Submit Review
+                  Отправить отзыв
                 </Button>
               </form>
             </Paper>
@@ -344,7 +350,7 @@ const BookDetail = () => {
           
           {reviews.length === 0 ? (
             <Typography variant="body1">
-              No reviews yet. Be the first to review this book!
+              Пока нет отзывов. Будьте первым, кто оставит отзыв об этой книге!
             </Typography>
           ) : (
             <Grid container spacing={2}>
@@ -383,7 +389,7 @@ const BookDetail = () => {
           
           <Box sx={{ mt: 4 }}>
             <Button component={Link} to="/discussions" variant="outlined">
-              View Discussions
+              Посмотреть обсуждения
             </Button>
           </Box>
         </Grid>
@@ -391,41 +397,41 @@ const BookDetail = () => {
       
       {/* Offer Dialog */}
       <Dialog open={offerDialog} onClose={() => setOfferDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Offer Book for Exchange/Sale</DialogTitle>
+        <DialogTitle>Предложить книгу для обмена/продажи</DialogTitle>
         <DialogContent>
           <FormControl fullWidth margin="normal">
-            <InputLabel>Condition</InputLabel>
+            <InputLabel>Состояние</InputLabel>
             <Select
               name="condition"
               value={offerForm.condition}
               onChange={handleOfferChange}
-              label="Condition"
+              label="Состояние"
             >
-              <MenuItem value="Like New">Like New</MenuItem>
-              <MenuItem value="Very Good">Very Good</MenuItem>
-              <MenuItem value="Good">Good</MenuItem>
-              <MenuItem value="Acceptable">Acceptable</MenuItem>
-              <MenuItem value="Poor">Poor</MenuItem>
+              <MenuItem value="Like New">Как новая</MenuItem>
+              <MenuItem value="Very Good">Очень хорошее</MenuItem>
+              <MenuItem value="Good">Хорошее</MenuItem>
+              <MenuItem value="Acceptable">Приемлемое</MenuItem>
+              <MenuItem value="Poor">Плохое</MenuItem>
             </Select>
           </FormControl>
           
           <FormControl fullWidth margin="normal">
-            <InputLabel>Exchange Type</InputLabel>
+            <InputLabel>Тип обмена</InputLabel>
             <Select
               name="exchange_type"
               value={offerForm.exchange_type}
               onChange={handleOfferChange}
-              label="Exchange Type"
+              label="Тип обмена"
             >
-              <MenuItem value="EXCHANGE">Exchange</MenuItem>
-              <MenuItem value="SELL">Sell</MenuItem>
+              <MenuItem value="EXCHANGE">Обмен</MenuItem>
+              <MenuItem value="SELL">Продажа</MenuItem>
             </Select>
           </FormControl>
           
           {offerForm.exchange_type === 'SELL' && (
             <TextField
               name="price"
-              label="Price"
+              label="Цена"
               type="number"
               value={offerForm.price}
               onChange={handleOfferChange}
@@ -437,7 +443,7 @@ const BookDetail = () => {
           
           <TextField
             name="exchange_preferences"
-            label="Exchange Preferences or Additional Notes"
+            label="Предпочтения по обмену или дополнительные примечания"
             value={offerForm.exchange_preferences}
             onChange={handleOfferChange}
             fullWidth
@@ -447,40 +453,40 @@ const BookDetail = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOfferDialog(false)}>Cancel</Button>
+          <Button onClick={() => setOfferDialog(false)}>Отмена</Button>
           <Button onClick={handleOfferSubmit} color="primary" variant="contained">
-            Create Offer
+            Создать предложение
           </Button>
         </DialogActions>
       </Dialog>
       
       {/* Request Dialog */}
       <Dialog open={requestDialog} onClose={() => setRequestDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Request Exchange/Purchase</DialogTitle>
+        <DialogTitle>Запрос на обмен/покупку</DialogTitle>
         <DialogContent>
           {selectedOffer && (
             <>
               <Typography variant="subtitle1" gutterBottom>
-                You are requesting to {selectedOffer.exchange_type === 'SELL' ? 'purchase' : 'exchange'} "{book.title}" from {selectedOffer.owner_username}
+                Вы запрашиваете {selectedOffer.exchange_type === 'SELL' ? 'покупку' : 'обмен'} книги "{book.title}" у пользователя {selectedOffer.owner_username}
               </Typography>
               
               <TextField
-                label="Message to Owner"
+                label="Сообщение владельцу"
                 value={requestMessage}
                 onChange={(e) => setRequestMessage(e.target.value)}
                 fullWidth
                 multiline
                 rows={4}
                 margin="normal"
-                placeholder="Introduce yourself and explain why you're interested in this book..."
+                placeholder="Представьтесь и объясните, почему вы заинтересованы в этой книге..."
               />
             </>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRequestDialog(false)}>Cancel</Button>
+          <Button onClick={() => setRequestDialog(false)}>Отмена</Button>
           <Button onClick={handleRequestSubmit} color="primary" variant="contained">
-            Send Request
+            Отправить запрос
           </Button>
         </DialogActions>
       </Dialog>

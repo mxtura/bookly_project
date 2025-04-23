@@ -16,6 +16,7 @@ const DiscussionList = () => {
   const [books, setBooks] = useState([]);
   const [loadingBooks, setLoadingBooks] = useState(false);
   const [bookSearch, setBookSearch] = useState('');
+  const [bookSearchTimeout, setBookSearchTimeout] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -43,7 +44,7 @@ const DiscussionList = () => {
       console.error('Error fetching discussions:', error);
       setNotification({
         open: true,
-        message: 'Failed to load discussions',
+        message: 'Не удалось загрузить обсуждения',
         severity: 'error'
       });
     } finally {
@@ -65,21 +66,41 @@ const DiscussionList = () => {
     fetchBooks();
   };
 
-  const fetchBooks = async () => {
+  const fetchBooks = async (searchQuery = '') => {
     setLoadingBooks(true);
     try {
-      const response = await getBooks({ search: bookSearch });
+      const params = searchQuery ? { search: searchQuery } : {};
+      const response = await getBooks(params);
       setBooks(response.data.results || response.data);
     } catch (error) {
       console.error('Error fetching books:', error);
+      setNotification({
+        open: true,
+        message: 'Не удалось загрузить книги. Пожалуйста, попробуйте снова.',
+        severity: 'error'
+      });
     } finally {
       setLoadingBooks(false);
     }
   };
 
   const handleBookSearchChange = (e) => {
-    setBookSearch(e.target.value);
-    fetchBooks();
+    const value = e.target.value;
+    setBookSearch(value);
+
+    if (bookSearchTimeout) {
+      clearTimeout(bookSearchTimeout);
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (value.trim()) {
+        fetchBooks(value);
+      } else {
+        fetchBooks();
+      }
+    }, 500);
+
+    setBookSearchTimeout(timeoutId);
   };
 
   const handleFormChange = (e) => {
@@ -93,7 +114,6 @@ const DiscussionList = () => {
     try {
       await createDiscussion(formData);
       
-      // Reset form and close dialog
       setFormData({
         title: '',
         content: '',
@@ -101,19 +121,18 @@ const DiscussionList = () => {
       });
       setCreateDialog(false);
       
-      // Refresh discussions
       fetchDiscussions();
       
       setNotification({
         open: true,
-        message: 'Discussion created successfully',
+        message: 'Обсуждение успешно создано',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error creating discussion:', error);
       setNotification({
         open: true,
-        message: 'Failed to create discussion',
+        message: 'Не удалось создать обсуждение',
         severity: 'error'
       });
     }
@@ -123,7 +142,7 @@ const DiscussionList = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Book Discussions
+          Обсуждения книг
         </Typography>
         
         {isAuthenticated && (
@@ -132,19 +151,19 @@ const DiscussionList = () => {
             color="primary"
             onClick={handleOpenCreateDialog}
           >
-            Start New Discussion
+            Начать новое обсуждение
           </Button>
         )}
       </Box>
       
       <Box component="form" onSubmit={handleSearchSubmit} sx={{ mb: 4 }}>
         <TextField
-          label="Search Discussions"
+          label="Поиск обсуждений"
           variant="outlined"
           fullWidth
           value={search}
           onChange={handleSearchChange}
-          placeholder="Search by title or content"
+          placeholder="Поиск по заголовку или содержанию"
         />
       </Box>
       
@@ -155,7 +174,7 @@ const DiscussionList = () => {
       ) : discussions.length === 0 ? (
         <Box sx={{ textAlign: 'center', my: 4 }}>
           <Typography variant="h6" gutterBottom>
-            No discussions found
+            Обсуждения не найдены
           </Typography>
           {isAuthenticated && (
             <Button 
@@ -164,7 +183,7 @@ const DiscussionList = () => {
               onClick={handleOpenCreateDialog}
               sx={{ mt: 2 }}
             >
-              Start the First Discussion
+              Начать первое обсуждение
             </Button>
           )}
         </Box>
@@ -192,7 +211,7 @@ const DiscussionList = () => {
                   </Box>
                   
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Started by {discussion.creator_username} on {new Date(discussion.created_at).toLocaleDateString()}
+                    Автор: {discussion.creator_username} от {new Date(discussion.created_at).toLocaleDateString()}
                   </Typography>
                   
                   <Divider sx={{ my: 2 }} />
@@ -208,7 +227,7 @@ const DiscussionList = () => {
                     to={`/discussions/${discussion.id}`}
                     variant="outlined"
                   >
-                    View Discussion
+                    Просмотреть обсуждение
                   </Button>
                 </CardContent>
               </Card>
@@ -219,11 +238,11 @@ const DiscussionList = () => {
       
       {/* Create Discussion Dialog */}
       <Dialog open={createDialog} onClose={() => setCreateDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Start New Discussion</DialogTitle>
+        <DialogTitle>Начать новое обсуждение</DialogTitle>
         <DialogContent>
           <TextField
             name="title"
-            label="Discussion Title"
+            label="Заголовок обсуждения"
             value={formData.title}
             onChange={handleFormChange}
             fullWidth
@@ -233,33 +252,34 @@ const DiscussionList = () => {
           
           <Box sx={{ mt: 2, mb: 3 }}>
             <Typography variant="subtitle1" gutterBottom>
-              Link to a Book (Optional)
+              Связать с книгой (опционально)
             </Typography>
             
             <TextField
-              label="Search Books"
+              label="Поиск книг"
               value={bookSearch}
               onChange={handleBookSearchChange}
               fullWidth
               margin="normal"
-              placeholder="Search by title or author"
+              placeholder="Поиск по названию или автору"
+              helperText="Введите текст для поиска книг (подождите немного для получения результатов)"
             />
             
             {loadingBooks ? (
               <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', my: 2 }} />
             ) : (
               <FormControl fullWidth margin="normal">
-                <InputLabel>Select Book</InputLabel>
+                <InputLabel>Выберите книгу</InputLabel>
                 <Select
                   name="book"
                   value={formData.book || ''}
                   onChange={handleFormChange}
-                  label="Select Book"
+                  label="Выберите книгу"
                 >
-                  <MenuItem value="">None</MenuItem>
+                  <MenuItem value="">Нет</MenuItem>
                   {books.map((book) => (
                     <MenuItem key={book.id} value={book.id}>
-                      {book.title} by {book.author}
+                      {book.title} {book.author?.name ? `автор: ${book.author.name}` : ''}
                     </MenuItem>
                   ))}
                 </Select>
@@ -269,7 +289,7 @@ const DiscussionList = () => {
           
           <TextField
             name="content"
-            label="Discussion Content"
+            label="Содержание обсуждения"
             value={formData.content}
             onChange={handleFormChange}
             fullWidth
@@ -280,13 +300,13 @@ const DiscussionList = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialog(false)}>Cancel</Button>
+          <Button onClick={() => setCreateDialog(false)}>Отмена</Button>
           <Button 
             onClick={handleCreateDiscussion}
             color="primary"
             disabled={!formData.title || !formData.content}
           >
-            Create Discussion
+            Создать обсуждение
           </Button>
         </DialogActions>
       </Dialog>

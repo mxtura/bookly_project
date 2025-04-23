@@ -36,7 +36,7 @@ const Profile = () => {
         console.error('Error fetching profile:', error);
         setNotification({
           open: true,
-          message: 'Failed to load profile data',
+          message: 'Не удалось загрузить данные профиля',
           severity: 'error'
         });
       } finally {
@@ -76,14 +76,14 @@ const Profile = () => {
       
       setNotification({
         open: true,
-        message: 'Profile updated successfully',
+        message: 'Профиль успешно обновлен',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error updating profile:', error);
       setNotification({
         open: true,
-        message: 'Failed to update profile',
+        message: 'Не удалось обновить профиль',
         severity: 'error'
       });
     } finally {
@@ -111,7 +111,7 @@ const Profile = () => {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Alert severity="error">
-          Unable to load user profile. Please try logging in again.
+          Не удалось загрузить профиль пользователя. Пожалуйста, попробуйте войти снова.
         </Alert>
       </Container>
     );
@@ -120,7 +120,7 @@ const Profile = () => {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        My Profile
+        Мой профиль
       </Typography>
       
       <Grid container spacing={4}>
@@ -135,15 +135,15 @@ const Profile = () => {
             </Avatar>
             
             <Typography variant="h6" gutterBottom>
-              {profile.username || 'Username not available'}
+              {profile.username || 'Имя пользователя недоступно'}
             </Typography>
             
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              {profile.email || 'Email not available'}
+              {profile.email || 'Email недоступен'}
             </Typography>
             
             <Button variant="outlined" size="small" sx={{ mt: 1 }}>
-              Change Avatar
+              Изменить аватар
             </Button>
           </Paper>
         </Grid>
@@ -151,13 +151,13 @@ const Profile = () => {
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Personal Information
+              Личная информация
             </Typography>
             
             <Box component="form" onSubmit={handleSubmit}>
               <TextField
                 name="full_name"
-                label="Full Name"
+                label="Полное имя"
                 value={formData.full_name}
                 onChange={handleChange}
                 fullWidth
@@ -166,7 +166,7 @@ const Profile = () => {
               
               <TextField
                 name="birth_date"
-                label="Birth Date"
+                label="Дата рождения"
                 type="date"
                 value={formatDateForInput(formData.birth_date)}
                 onChange={handleChange}
@@ -184,34 +184,34 @@ const Profile = () => {
                 sx={{ mt: 3 }}
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? 'Сохранение...' : 'Сохранить изменения'}
               </Button>
             </Box>
           </Paper>
           
           <Paper sx={{ p: 3, mt: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Account Settings
+              Настройки аккаунта
             </Typography>
             
             <Box sx={{ mb: 2 }}>
               <Button variant="outlined" color="primary" fullWidth sx={{ mb: 1 }}>
-                Change Password
+                Изменить пароль
               </Button>
               
               <Button variant="outlined" color="secondary" fullWidth>
-                Privacy Settings
+                Настройки конфиденциальности
               </Button>
             </Box>
             
             <Divider sx={{ my: 2 }} />
             
             <Typography variant="h6" gutterBottom>
-              Danger Zone
+              Опасная зона
             </Typography>
             
             <Button variant="outlined" color="error">
-              Delete Account
+              Удалить аккаунт
             </Button>
           </Paper>
         </Grid>

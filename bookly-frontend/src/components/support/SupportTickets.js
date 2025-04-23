@@ -51,7 +51,7 @@ const SupportTickets = () => {
       console.error('Error fetching tickets:', error);
       setNotification({
         open: true,
-        message: 'Failed to load support tickets',
+        message: 'Не удалось загрузить заявки в поддержку',
         severity: 'error'
       });
     } finally {
@@ -68,7 +68,7 @@ const SupportTickets = () => {
       console.error('Error fetching replies:', error);
       setNotification({
         open: true,
-        message: 'Failed to load ticket replies',
+        message: 'Не удалось загрузить ответы на заявку',
         severity: 'error'
       });
     } finally {
@@ -91,14 +91,14 @@ const SupportTickets = () => {
       fetchTickets();
       setNotification({
         open: true,
-        message: 'Support ticket created successfully',
+        message: 'Заявка в поддержку успешно создана',
         severity: 'success'
       });
     } catch (error) {
       console.error('Error creating ticket:', error);
       setNotification({
         open: true,
-        message: 'Failed to create support ticket',
+        message: 'Не удалось создать заявку в поддержку',
         severity: 'error'
       });
     }
@@ -107,21 +107,31 @@ const SupportTickets = () => {
   const handleReplySubmit = async (e) => {
     e.preventDefault();
     
-    if (!replyText.trim() || !selectedTicket) return;
+    // Check if replyText is empty before submitting
+    if (!replyText.trim()) {
+      setNotification({
+        open: true,
+        message: 'Reply text cannot be empty',
+        severity: 'error'
+      });
+      return;
+    }
     
     try {
+      // Use "message" field instead of "content" as the API expects
       const replyData = {
         ticket: selectedTicket.id,
-        message: replyText
+        message: replyText.trim() // Changed from "content" to "message"
       };
+      
+      // Log the data being sent for debugging
+      console.log('Sending reply data:', replyData);
       
       await createTicketReply(replyData);
       
-      // Refresh replies
-      fetchReplies(selectedTicket.id);
-      
-      // Clear input
+      // Clear reply text and refetch replies
       setReplyText('');
+      fetchReplies(selectedTicket.id);
       
       setNotification({
         open: true,
@@ -132,7 +142,7 @@ const SupportTickets = () => {
       console.error('Error sending reply:', error);
       setNotification({
         open: true,
-        message: 'Failed to send reply',
+        message: `Failed to send reply: ${error.message}`,
         severity: 'error'
       });
     }
@@ -150,7 +160,7 @@ const SupportTickets = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Support Tickets
+          Заявки в поддержку
         </Typography>
         
         <Button 
@@ -158,24 +168,24 @@ const SupportTickets = () => {
           color="primary"
           onClick={() => setCreateDialog(true)}
         >
-          New Support Ticket
+          Новая заявка в поддержку
         </Button>
       </Box>
       
       {tickets.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" gutterBottom>
-            You don't have any support tickets yet
+            У вас еще нет заявок в поддержку
           </Typography>
           <Typography variant="body1" paragraph>
-            Create a new ticket if you need assistance.
+            Создайте новую заявку, если вам нужна помощь.
           </Typography>
           <Button 
             variant="contained" 
             color="primary"
             onClick={() => setCreateDialog(true)}
           >
-            Create Your First Ticket
+            Создать первую заявку
           </Button>
         </Paper>
       ) : (
@@ -186,14 +196,14 @@ const SupportTickets = () => {
                 {tickets.map((ticket) => (
                   <ListItem
                     key={ticket.id}
-                    button
+                    component="button" // Changed from button={true} to component="button"
                     selected={selectedTicket?.id === ticket.id}
                     onClick={() => setSelectedTicket(ticket)}
                     divider
                   >
                     <ListItemText
                       primary={ticket.subject}
-                      secondary={`Created: ${new Date(ticket.created_at).toLocaleDateString()}`}
+                      secondary={`Создано: ${new Date(ticket.created_at).toLocaleDateString()}`}
                       primaryTypographyProps={{
                         noWrap: true
                       }}
@@ -230,7 +240,7 @@ const SupportTickets = () => {
                     }
                   />
                   <Typography variant="body2" color="text.secondary">
-                    Created: {new Date(selectedTicket.created_at).toLocaleDateString()}
+                    Создано: {new Date(selectedTicket.created_at).toLocaleDateString()}
                   </Typography>
                 </Box>
                 
@@ -257,7 +267,7 @@ const SupportTickets = () => {
                     {replies.length > 0 && (
                       <Box sx={{ mb: 3 }}>
                         <Typography variant="h6" gutterBottom>
-                          Replies
+                          Ответы
                         </Typography>
                         
                         {replies.map((reply) => (
@@ -286,11 +296,11 @@ const SupportTickets = () => {
                     {selectedTicket.status !== 'CLOSED' && (
                       <Box component="form" onSubmit={handleReplySubmit}>
                         <Typography variant="h6" gutterBottom>
-                          Add Reply
+                          Добавить ответ
                         </Typography>
                         
                         <TextField
-                          label="Your Reply"
+                          label="Ваш ответ"
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
                           fullWidth
@@ -307,7 +317,7 @@ const SupportTickets = () => {
                           sx={{ mt: 1 }}
                           disabled={!replyText.trim()}
                         >
-                          Send Reply
+                          Отправить ответ
                         </Button>
                       </Box>
                     )}
@@ -317,7 +327,7 @@ const SupportTickets = () => {
             ) : (
               <Paper sx={{ p: 3, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography variant="body1" color="text.secondary">
-                  Select a ticket to view details
+                  Выберите заявку для просмотра деталей
                 </Typography>
               </Paper>
             )}
@@ -327,11 +337,11 @@ const SupportTickets = () => {
       
       {/* Create Ticket Dialog */}
       <Dialog open={createDialog} onClose={() => setCreateDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Create New Support Ticket</DialogTitle>
+        <DialogTitle>Создать новую заявку в поддержку</DialogTitle>
         <DialogContent>
           <TextField
             name="subject"
-            label="Subject"
+            label="Тема"
             value={ticketForm.subject}
             onChange={handleTicketFormChange}
             fullWidth
@@ -341,7 +351,7 @@ const SupportTickets = () => {
           
           <TextField
             name="message"
-            label="Message"
+            label="Сообщение"
             value={ticketForm.message}
             onChange={handleTicketFormChange}
             fullWidth
@@ -349,17 +359,17 @@ const SupportTickets = () => {
             rows={6}
             margin="normal"
             required
-            placeholder="Describe your issue in detail..."
+            placeholder="Опишите вашу проблему подробно..."
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialog(false)}>Cancel</Button>
+          <Button onClick={() => setCreateDialog(false)}>Отмена</Button>
           <Button 
             onClick={handleCreateTicket}
             color="primary"
             disabled={!ticketForm.subject || !ticketForm.message}
           >
-            Submit Ticket
+            Отправить заявку
           </Button>
         </DialogActions>
       </Dialog>

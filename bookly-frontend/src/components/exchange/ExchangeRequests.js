@@ -34,7 +34,7 @@ const ExchangeRequests = () => {
       console.error('Error fetching requests:', error);
       setNotification({
         open: true,
-        message: 'Failed to load exchange requests',
+        message: 'Не удалось загрузить запросы на обмен',
         severity: 'error'
       });
     } finally {
@@ -59,14 +59,15 @@ const ExchangeRequests = () => {
       
       setNotification({
         open: true,
-        message: `Request ${responseAction.toLowerCase()} successfully`,
+        message: `Запрос ${responseAction === 'ACCEPTED' ? 'принят' : 
+                   responseAction === 'REJECTED' ? 'отклонен' : 'завершен'} успешно`,
         severity: 'success'
       });
     } catch (error) {
       console.error('Error updating request:', error);
       setNotification({
         open: true,
-        message: 'Failed to update request',
+        message: 'Не удалось обновить запрос',
         severity: 'error'
       });
     }
@@ -93,25 +94,25 @@ const ExchangeRequests = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Exchange Requests
+        Запросы на обмен
       </Typography>
       
       <Paper sx={{ mb: 4 }}>
         <Tabs value={tabValue} onChange={handleTabChange} centered>
-          <Tab label="Incoming Requests" />
-          <Tab label="My Requests" />
+          <Tab label="Входящие запросы" />
+          <Tab label="Мои запросы" />
         </Tabs>
       </Paper>
       
       {filteredRequests.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" gutterBottom>
-            No {tabValue === 0 ? 'incoming' : 'outgoing'} requests found
+            {tabValue === 0 ? 'Входящие запросы не найдены' : 'Исходящие запросы не найдены'}
           </Typography>
           <Typography variant="body1">
             {tabValue === 0 
-              ? "When someone requests one of your books, it will appear here."
-              : "When you request books from others, your requests will appear here."}
+              ? "Когда кто-то запрашивает одну из ваших книг, запрос появится здесь."
+              : "Когда вы запрашиваете книги у других людей, ваши запросы появятся здесь."}
           </Typography>
         </Paper>
       ) : (
@@ -138,13 +139,13 @@ const ExchangeRequests = () => {
                   </Box>
                   
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>{tabValue === 0 ? 'From:' : 'To:'}</strong> {
+                    <strong>{tabValue === 0 ? 'От:' : 'Кому:'}</strong> {
                       tabValue === 0 ? request.requester_username : request.offer?.owner_username
                     }
                   </Typography>
                   
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Created:</strong> {new Date(request.created_at).toLocaleDateString()}
+                    <strong>Создано:</strong> {new Date(request.created_at).toLocaleDateString()}
                   </Typography>
                   
                   {request.message && (
@@ -165,7 +166,7 @@ const ExchangeRequests = () => {
                           setResponseDialog(true);
                         }}
                       >
-                        Accept
+                        Принять
                       </Button>
                       <Button 
                         variant="contained" 
@@ -176,7 +177,7 @@ const ExchangeRequests = () => {
                           setResponseDialog(true);
                         }}
                       >
-                        Reject
+                        Отклонить
                       </Button>
                     </Box>
                   )}
@@ -192,7 +193,7 @@ const ExchangeRequests = () => {
                         setResponseDialog(true);
                       }}
                     >
-                      Mark as Completed
+                      Отметить как завершенный
                     </Button>
                   )}
                 </CardContent>
@@ -205,21 +206,21 @@ const ExchangeRequests = () => {
       {/* Response Dialog */}
       <Dialog open={responseDialog} onClose={() => setResponseDialog(false)}>
         <DialogTitle>
-          {responseAction === 'ACCEPTED' ? 'Accept Request' : 
-           responseAction === 'REJECTED' ? 'Reject Request' : 'Complete Exchange'}
+          {responseAction === 'ACCEPTED' ? 'Принять запрос' : 
+           responseAction === 'REJECTED' ? 'Отклонить запрос' : 'Завершить обмен'}
         </DialogTitle>
         <DialogContent>
           <Typography gutterBottom>
             {responseAction === 'ACCEPTED' 
-              ? 'You are accepting the exchange request. You can leave a message to the requester:'
+              ? 'Вы принимаете запрос на обмен. Вы можете оставить сообщение запрашивающему:'
               : responseAction === 'REJECTED'
-              ? 'You are rejecting the exchange request. You can provide a reason:'
-              : 'You are marking this exchange as completed. Add any final notes:'}
+              ? 'Вы отклоняете запрос на обмен. Вы можете указать причину:'
+              : 'Вы отмечаете этот обмен как завершенный. Добавьте любые заметки:'}
           </Typography>
           <TextField
             autoFocus
             margin="dense"
-            label="Message"
+            label="Сообщение"
             fullWidth
             multiline
             rows={4}
@@ -228,7 +229,7 @@ const ExchangeRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setResponseDialog(false)}>Cancel</Button>
+          <Button onClick={() => setResponseDialog(false)}>Отмена</Button>
           <Button 
             onClick={handleRequestResponse} 
             color={
@@ -236,7 +237,7 @@ const ExchangeRequests = () => {
               responseAction === 'REJECTED' ? 'error' : 'primary'
             }
           >
-            Confirm
+            Подтвердить
           </Button>
         </DialogActions>
       </Dialog>

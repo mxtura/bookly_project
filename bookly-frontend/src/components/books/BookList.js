@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Container, Typography, Grid, Card, CardContent, CardMedia, 
-  CardActionArea, TextField, Box, FormControl, InputLabel,
-  Select, MenuItem, Pagination, CircularProgress
+import {
+  Container, Typography, Grid, Box, FormControl, InputLabel,
+  Select, MenuItem, Pagination, CircularProgress, TextField
 } from '@mui/material';
 import { getBooks, getGenres } from '../../services/api';
+import BookCard from './BookCard'; // Import the new BookCard component
 
 const BookList = () => {
   const [books, setBooks] = useState([]);
@@ -38,20 +37,51 @@ const BookList = () => {
     const fetchBooks = async () => {
       setLoading(true);
       try {
-        const params = {
-          search: search,
-          page: pagination.page,
-          ordering: filters.sort
-        };
+        // Create properly formatted params for the API
+        const params = {};
         
-        if (filters.genre) {
-          params.genres__name = filters.genre;
+        // Only add search parameter if it's not empty
+        if (search.trim()) {
+          params.search = search.trim();
         }
         
-        const response = await getBooks(params);
-        setBooks(response.data.results || response.data);
+        // Add pagination
+        params.page = pagination.page;
         
-        if (response.data.count) {
+        // Add sorting
+        if (filters.sort) {
+          params.ordering = filters.sort;
+        }
+        
+        // Try several parameter formats for genre filtering
+        if (filters.genre) {
+          // Try several different parameter formats that the Django backend might expect
+          params.genre = filters.genre;
+          params.genres = filters.genre;
+          params.genre_name = filters.genre;
+        }
+        
+        console.log('Fetching books with params:', params);
+        const response = await getBooks(params);
+        
+        let filteredBooks = response.data.results || response.data;
+        
+        // If we have a genre filter and the API didn't filter the results, do client-side filtering
+        if (filters.genre && filteredBooks.length === response.data.count) {
+          console.log('API did not filter by genre, applying client-side filter');
+          filteredBooks = filteredBooks.filter(book => {
+            // Check if book has genres array and if any genre matches our filter
+            return book.genres && book.genres.some(g => 
+              g.name === filters.genre || g === filters.genre
+            );
+          });
+        }
+        
+        console.log('Books after filtering:', filteredBooks);
+        setBooks(filteredBooks);
+        
+        // Handle pagination data
+        if (response.data.count !== undefined) {
           setPagination(prevPagination => ({
             ...prevPagination,
             totalPages: Math.ceil(response.data.count / 10)
@@ -64,7 +94,12 @@ const BookList = () => {
       }
     };
 
-    fetchBooks();
+    // Add a delay to prevent too many API calls during typing
+    const timeoutId = setTimeout(() => {
+      fetchBooks();
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
   }, [search, filters, pagination.page]);
 
   const handleSearchChange = (e) => {
@@ -84,28 +119,28 @@ const BookList = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Books Catalog
+        Каталог книг
       </Typography>
-      
+
       <Box sx={{ mb: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
         <TextField
-          label="Search Books"
+          label="Поиск книг"
           variant="outlined"
           fullWidth
           value={search}
           onChange={handleSearchChange}
-          placeholder="Search by title, author, or ISBN"
+          placeholder="Поиск по названию, автору или ISBN"
         />
-        
+
         <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Genre</InputLabel>
+          <InputLabel>Жанр</InputLabel>
           <Select
             name="genre"
             value={filters.genre}
             onChange={handleFilterChange}
-            label="Genre"
+            label="Жанр"
           >
-            <MenuItem value="">All Genres</MenuItem>
+            <MenuItem value="">Все жанры</MenuItem>
             {genres.map((genre) => (
               <MenuItem key={genre.id} value={genre.name}>
                 {genre.name}
@@ -113,65 +148,52 @@ const BookList = () => {
             ))}
           </Select>
         </FormControl>
-        
+
         <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Sort By</InputLabel>
+          <InputLabel>Сортировать по</InputLabel>
           <Select
             name="sort"
             value={filters.sort}
             onChange={handleFilterChange}
-            label="Sort By"
+            label="Сортировать по"
           >
-            <MenuItem value="title">Title (A-Z)</MenuItem>
-            <MenuItem value="-title">Title (Z-A)</MenuItem>
-            <MenuItem value="author">Author (A-Z)</MenuItem>
-            <MenuItem value="-author">Author (Z-A)</MenuItem>
-            <MenuItem value="publication_date">Publication Date (Old-New)</MenuItem>
-            <MenuItem value="-publication_date">Publication Date (New-Old)</MenuItem>
+            <MenuItem value="title">Название (А-Я)</MenuItem>
+            <MenuItem value="-title">Название (Я-А)</MenuItem>
+            <MenuItem value="author">Автор (А-Я)</MenuItem>
+            <MenuItem value="-author">Автор (Я-А)</MenuItem>
+            <MenuItem value="publication_date">Дата публикации (старые-новые)</MenuItem>
+            <MenuItem value="-publication_date">Дата публикации (новые-старые)</MenuItem>
           </Select>
         </FormControl>
       </Box>
-      
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress />
         </Box>
       ) : books.length === 0 ? (
         <Typography variant="h6" align="center" sx={{ my: 4 }}>
-          No books found matching your criteria
+          Книги, соответствующие вашим критериям, не найдены
         </Typography>
       ) : (
         <>
           <Grid container spacing={3}>
             {books.map((book) => (
-              <Grid item key={book.id} xs={12} sm={6} md={4} lg={3}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardActionArea component={Link} to={`/books/${book.id}`}>
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={book.cover_image || 'https://via.placeholder.com/150x200?text=No+Cover'}
-                      alt={book.title}
-                    />
-                    <CardContent>
-                      <Typography gutterBottom variant="h6" component="div" noWrap>
-                        {book.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        by {book.author}
-                      </Typography>
-                      {book.average_rating > 0 && (
-                        <Typography variant="body2" color="text.secondary">
-                          Rating: {book.average_rating.toFixed(1)} / 5
-                        </Typography>
-                      )}
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
+              <Grid 
+                item 
+                key={book.id} 
+                xs={12} 
+                sm={6} 
+                md={4} 
+                lg={3}
+              >
+                <BookCard 
+                  book={book}
+                />
               </Grid>
             ))}
           </Grid>
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
             <Pagination
               count={pagination.totalPages}

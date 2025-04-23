@@ -5,7 +5,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 
 // Components
 import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
 import Home from './components/Home';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -139,7 +138,6 @@ function App() {
             </ProtectedRoute>
           } />
         </Routes>
-        <Footer />
       </Router>
     </ThemeProvider>
   );
